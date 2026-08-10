@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexicon — тренажёр словарного запаса</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<section class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="brand auth-brand">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span>Lexicon</span>
+    </div>
+    <img class="auth-illustration" src="assets/vocabulary-hero.png" alt="Открытая книга и карточки для изучения новых слов">
+    <h1 id="authTitle">Вход участника</h1>
+    <p class="auth-subtitle" id="authSubtitle">Войди, чтобы продолжить обучение со своим прогрессом.</p>
+    <form id="authForm">
+      <label for="participantName">Имя участника</label>
+      <input id="participantName" name="username" type="text" minlength="2" maxlength="40" autocomplete="username" required>
+      <label for="participantPassword">Пароль</label>
+      <input id="participantPassword" name="password" type="password" minlength="4" maxlength="100" autocomplete="current-password" required>
+      <div class="role-field" id="roleField" hidden>
+        <label for="participantRole">Тип аккаунта</label>
+        <select id="participantRole">
+          <option value="student">Ученик</option>
+          <option value="teacher">Учитель</option>
+        </select>
+      </div>
+      <label class="remember-login"><input id="rememberLogin" type="checkbox" checked><span>Запомнить меня на этом устройстве</span></label>
+      <div class="form-error" id="authError" role="alert"></div>
+      <button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Войти</button>
+    </form>
+    <button class="auth-switch" id="authSwitch" type="button">Нет аккаунта? Зарегистрироваться</button>
+    <div class="registration-guide" id="registrationGuide" hidden>
+      <article class="guide-card guide-card--student">
+        <div class="guide-icon">A</div>
+        <div><h2>Для ученика</h2><ol><li>Выбери тип аккаунта «Ученик».</li><li>Придумай имя и пароль.</li><li>Изучай Decks и выполняй Homework.</li><li>Учитель увидит твой прогресс и ошибки.</li></ol></div>
+      </article>
+      <article class="guide-card guide-card--teacher">
+        <div class="guide-icon">T</div>
+        <div><h2>Для учителя</h2><ol><li>Выбери тип аккаунта «Учитель».</li><li>Создай отдельные имя и пароль.</li><li>Открывай результаты учеников.</li><li>Назначай оценки, посещаемость и задания.</li></ol></div>
+      </article>
+    </div>
+    <p class="auth-note">Аккаунты и прогресс хранятся только в этом браузере.</p>
+  </div>
+</section>
+
+<section class="teacher-screen" id="teacherScreen" hidden>
+  <header class="teacher-header">
+    <div class="brand"><span>Lexicon Teacher</span></div>
+    <nav class="teacher-nav">
+      <button class="active" data-teacher-view="overview">Overview</button>
+      <button data-teacher-view="decks">Decks</button>
+      <button data-teacher-view="grades">Оценки</button>
+      <button data-teacher-view="attendance">Посещаемость</button>
+      <button data-teacher-view="homework">Домашние задания</button>
+    </nav>
+    <div><strong id="teacherName"></strong><button class="btn btn-ghost" id="teacherLogoutBtn" type="button">Log out</button></div>
+  </header>
+  <main class="teacher-content">
+    <section class="teacher-view active" id="teacher-view-overview">
+      <div class="teacher-intro"><span class="hero-kicker">Teacher dashboard</span><h1>Результаты учеников</h1><p>Достижения, активность и слова, требующие дополнительной практики.</p></div>
+      <div class="teacher-summary" id="teacherSummary"></div>
+      <div class="student-report-grid" id="studentReportGrid"></div>
+    </section>
+    <section class="teacher-view" id="teacher-view-decks">
+      <div class="teacher-intro teacher-intro--actions"><div><h1>Колоды учеников</h1><p>Создавайте учебные колоды прямо в аккаунте выбранного ученика.</p></div><button class="btn btn-primary" id="openTeacherDeckModal" type="button">Новая колода</button></div>
+      <div class="teacher-deck-grid" id="teacherDeckGrid"></div>
+    </section>
+    <section class="teacher-view" id="teacher-view-grades">
+      <div class="teacher-intro"><h1>Журнал оценок</h1><p>Балл рассчитывается автоматически по точности и объёму выполненной работы.</p></div>
+      <form class="teacher-entry-form" id="gradeForm"><select id="gradeStudent" required></select><select id="gradeSubject" required><option value="">Выберите колоду</option></select><input id="gradeScore" type="number" min="0" max="100" placeholder="Автоматический балл" title="70% — точность, 30% — проработанные карточки" readonly required><input id="gradeDate" type="date" required readonly><button class="btn btn-primary">Зафиксировать</button></form>
+      <div class="teacher-table-wrap"><table class="teacher-table"><thead><tr><th>Ученик</th><th>Предмет</th><th>Балл</th><th>Дата</th><th></th></tr></thead><tbody id="gradesBody"></tbody></table></div>
+    </section>
+    <section class="teacher-view" id="teacher-view-attendance">
+      <div class="teacher-intro"><h1>Посещаемость</h1><p>Отмечайте присутствие, отсутствие и опоздания.</p></div>
+      <form class="teacher-entry-form" id="attendanceForm"><select id="attendanceStudent" required></select><input id="attendanceDate" type="date" required><select id="attendanceStatus"><option value="present">Присутствовал</option><option value="absent">Отсутствовал</option><option value="late">Опоздал</option></select><button class="btn btn-primary">Сохранить</button></form>
+      <div class="teacher-table-wrap"><table class="teacher-table"><thead><tr><th>Ученик</th><th>Дата</th><th>Статус</th><th></th></tr></thead><tbody id="attendanceBody"></tbody></table></div>
+    </section>
+    <section class="teacher-view" id="teacher-view-homework">
+      <div class="teacher-intro teacher-intro--actions"><div><h1>Домашние задания</h1><p>Контролируйте выполнение заданий учениками.</p></div><button class="btn btn-primary" id="openHomeworkModal" type="button">Назначить задание</button></div>
+      <div class="teacher-table-wrap"><table class="teacher-table"><thead><tr><th>Ученик</th><th>Задание</th><th>Предмет</th><th>Срок</th><th>Статус</th><th></th></tr></thead><tbody id="homeworkBody"></tbody></table></div>
+    </section>
+  </main>
+</section>
+
+<div class="modal-overlay" id="homeworkModal" hidden>
+  <form class="modal" id="homeworkForm">
+    <h3>Назначить домашнее задание</h3>
+    <label for="homeworkStudent">Ученик</label><select id="homeworkStudent" required></select>
+    <label for="homeworkSubject">Колода</label><select id="homeworkSubject" required><option value="">Выберите колоду</option></select>
+    <label for="homeworkTitle">Задание</label><input id="homeworkTitle" placeholder="Например: повторить 10 слов" required>
+    <label for="homeworkDueDate">Срок сдачи</label><input id="homeworkDueDate" type="date" required>
+    <label for="homeworkStatus">Статус</label><select id="homeworkStatus"><option value="pending">В работе</option><option value="done">Выполнено</option><option value="missed">Не выполнено</option></select>
+    <div class="form-error" id="homeworkFormError" role="alert"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="homeworkModalCancel" type="button">Отмена</button><button class="btn btn-primary" type="submit">Назначить</button></div>
+  </form>
+</div>
+
+<div class="modal-overlay" id="teacherDeckModal" hidden>
+  <form class="modal" id="teacherDeckForm">
+    <h3>Новая колода для ученика</h3>
+    <label for="teacherDeckStudent">Ученик</label><select id="teacherDeckStudent" required></select>
+    <label for="teacherDeckName">Название</label><input id="teacherDeckName" placeholder="Например: Travel English" maxlength="80" required>
+    <label for="teacherDeckLevel">Уровень</label><select id="teacherDeckLevel"><option value="Beginner">Beginner (A1)</option><option value="Intermediate">Intermediate (B1)</option><option value="Advanced">Advanced (C1)</option></select>
+    <label for="teacherDeckLang">Язык произношения</label><select id="teacherDeckLang"><option value="en-GB">Английский (UK)</option><option value="es-ES">Испанский</option><option value="fr-FR">Французский</option><option value="de-DE">Немецкий</option><option value="it-IT">Итальянский</option><option value="pt-PT">Португальский</option><option value="tr-TR">Турецкий</option></select>
+    <div class="form-error" id="teacherDeckFormError" role="alert"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="teacherDeckModalCancel" type="button">Отмена</button><button class="btn btn-primary" type="submit">Создать</button></div>
+  </form>
+</div>
+
+<div class="app" id="app" hidden>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Lexicon</span>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-view="dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="12" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="16" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="decks">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="4" rx="1.2" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="10" width="16" height="4" rx="1.2" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="16" width="16" height="4" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span>Decks</span>
+      </button>
+      <button class="nav-item" data-view="study">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M9 8h4M9 12h4M9 16h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17 7l3 5-3 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Practice</span>
+      </button>
+      <button class="nav-item" data-view="homework">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6"/><path d="m7.5 12 2.5 2.5 6-6M8 18h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Homework</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="streak-box">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2c1.5 4 5 5.5 5 10a5 5 0 0 1-10 0c0-1.4.5-2.4 1.2-3.4.3.9 1 1.4 1.8 1.4.9 0 1.5-.7 1.5-1.6 0-1-1-2-1-4C10.5 2.8 11.2 2 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <div>
+        <div class="streak-num" id="streakNum">0</div>
+        <div class="streak-label">day streak</div>
+      </div>
+    </div>
+    <div class="participant-box">
+      <span class="participant-avatar" id="participantAvatar"></span>
+      <div><strong id="participantDisplayName"></strong><button id="logoutBtn" type="button">Log out</button></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view active">
+      <div class="dashboard-hero">
+        <header class="view-header">
+          <span class="hero-kicker">Твой словарный запас</span>
+          <h1 id="dashboardGreeting">С возвращением!</h1>
+          <p>Каждое новое слово открывает ещё одну дверь.</p>
+        </header>
+        <img src="assets/vocabulary-hero.png" alt="Книга с наглядными карточками новых слов">
+      </div>
+
+      <div class="motivation-bars" aria-label="Мотивационный прогресс">
+        <div class="motivation-bar motivation-bar--green">
+          <div class="motivation-bar-top"><span>Недельная цель</span><strong id="weeklyGoalValue">0 / 35</strong></div>
+          <div class="motivation-track"><span id="weeklyGoalFill"></span></div>
+          <p id="weeklyGoalMessage">Начни с пяти повторений сегодня!</p>
+        </div>
+        <div class="motivation-bar motivation-bar--peach">
+          <div class="motivation-bar-top"><span>Освоение слов</span><strong id="masteryGoalValue">0%</strong></div>
+          <div class="motivation-track"><span id="masteryGoalFill"></span></div>
+          <p id="masteryGoalMessage">Каждая карточка приближает к цели.</p>
+        </div>
+        <div class="motivation-bar motivation-bar--sand">
+          <div class="motivation-bar-top"><span>Серия: цель 7 дней</span><strong id="streakGoalValue">0 / 7</strong></div>
+          <div class="motivation-track"><span id="streakGoalFill"></span></div>
+          <p id="streakGoalMessage">Занимайся понемногу каждый день.</p>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon bg-pistachio"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div class="stat-info"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Всего слов</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="stat-info"><div class="stat-value" id="statMastered">0</div><div class="stat-label">Освоено</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-sand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div class="stat-info"><div class="stat-value" id="statDue">0</div><div class="stat-label">К повторению сегодня</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-clay"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 7h4v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="stat-info"><div class="stat-value" id="statAccuracy">0%</div><div class="stat-label">Точность</div></div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="panel">
+          <h3>Активность за 14 дней</h3>
+          <canvas id="activityChart" height="160"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Стадии изучения</h3>
+          <canvas id="stageChart" height="160"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Прогресс по колодам</h3>
+        <div id="deckProgressList" class="deck-progress-list"></div>
+      </div>
+    </section>
+
+    <!-- DECKS -->
+    <section id="view-decks" class="view">
+      <header class="view-header">
+        <h1>Мои колоды</h1>
+        <p>Создавай наборы слов и добавляй карточки.</p>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="newDeckBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Новая колода
+          </button>
+          <button class="btn btn-ghost" id="exportBtn">Экспорт</button>
+          <label class="btn btn-ghost" for="importFile">Импорт
+            <input type="file" id="importFile" accept="application/json" hidden>
+          </label>
+        </div>
+      </header>
+      <div id="deckList" class="deck-grid"></div>
+    </section>
+
+    <!-- DECK DETAIL -->
+    <section id="view-deckDetail" class="view">
+      <header class="view-header">
+        <button class="btn-back" id="backToDecks">&larr; К колодам</button>
+        <h1 id="deckDetailTitle">Колода</h1>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="addCardBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Добавить слово
+          </button>
+          <button class="btn btn-accent" id="studyDeckBtn">Тренировать эту колоду</button>
+        </div>
+      </header>
+      <table class="word-table">
+        <thead><tr><th></th><th>Слово</th><th></th><th>Перевод</th><th></th><th>Стадия</th><th></th></tr></thead>
+        <tbody id="wordTableBody"></tbody>
+      </table>
+    </section>
+
+    <!-- STUDY -->
+    <section id="view-study" class="view">
+      <div id="studyPicker" class="study-picker">
+        <h1>Выбери колоду для тренировки</h1>
+        <div id="studyDeckList" class="deck-grid"></div>
+      </div>
+
+      <div id="studySession" class="study-session" hidden>
+        <div class="study-heading">
+          <div>
+            <span>Practice session</span>
+            <h2 id="studyDeckTitle">Vocabulary</h2>
+          </div>
+          <span class="study-level" id="studyDeckLevel">Deck</span>
+        </div>
+        <div class="study-top">
+          <div class="progress-track"><div class="progress-fill" id="studyProgressFill"></div></div>
+          <span id="studyCounter">0 / 0</span>
+        </div>
+
+        <div class="flip-wrap">
+          <div class="flip-card" id="flipCard">
+            <div class="flip-inner" id="flipInner">
+              <div class="flip-face flip-front">
+                <span class="card-side-label">Word</span>
+                <button class="speak-btn" id="speakFront" title="Озвучить">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M17 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </button>
+                <span class="flip-word" id="flipWordFront"></span>
+                <span class="flip-hint">нажми на карточку, чтобы перевернуть</span>
+              </div>
+              <div class="flip-face flip-back">
+                <span class="card-side-label">Translation</span>
+                <span class="flip-word" id="flipWordBack"></span>
+                <span class="flip-example" id="flipExample"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-row" id="gradeRow" hidden>
+          <button class="grade-btn grade-again" data-grade="0">Забыл<span>&lt; 10 мин</span></button>
+          <button class="grade-btn grade-hard" data-grade="1">Сложно<span>1 день</span></button>
+          <button class="grade-btn grade-good" data-grade="2">Хорошо<span>несколько дней</span></button>
+          <button class="grade-btn grade-easy" data-grade="3">Легко<span>неделя+</span></button>
+        </div>
+      </div>
+
+      <div id="studyDone" class="study-done" hidden>
+        <div class="reward-confetti" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="reward-medal" aria-hidden="true">★</div>
+        <span class="reward-kicker">Колода завершена</span>
+        <h2 id="rewardTitle">Отличная работа!</h2>
+        <p id="rewardMessage">Ты повторил все карточки, готовые к повторению.</p>
+        <div class="reward-stats">
+          <div><strong id="rewardReviews">0</strong><span>повторено</span></div>
+          <div><strong id="rewardAccuracy">0%</strong><span>точность</span></div>
+          <div><strong id="rewardStreak">0</strong><span>дней подряд</span></div>
+        </div>
+        <button class="btn btn-primary" id="doneBackBtn">Вернуться</button>
+      </div>
+    </section>
+
+    <!-- HOMEWORK -->
+    <section id="view-homework" class="view">
+      <header class="view-header"><h1>Домашние задания</h1><p>Задания, назначенные учителем для твоих колод.</p></header>
+      <div class="homework-summary" id="studentHomeworkSummary"></div>
+      <div class="student-homework-list" id="studentHomeworkList"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view">
+      <header class="view-header"><h1>Настройки</h1></header>
+      <div class="panel settings-panel">
+        <div class="setting-row">
+          <div><h4>Автоозвучка слова</h4><p>Слово будет проговариваться автоматически при открытии карточки</p></div>
+          <label class="switch"><input type="checkbox" id="autoSpeakToggle" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><h4>Скорость озвучки</h4><p>Настрой темп речи синтезатора</p></div>
+          <input type="range" id="speechRate" min="0.5" max="1.5" step="0.1" value="0.9">
+        </div>
+        <div class="setting-row">
+          <div><h4>Сбросить весь прогресс</h4><p>Удалит все колоды, слова и статистику безвозвратно</p></div>
+          <button class="btn btn-danger" id="resetAllBtn">Сбросить</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL: new deck -->
+<div class="modal-overlay" id="deckModal" hidden>
+  <div class="modal">
+    <h3>Новая колода</h3>
+    <label>Название</label>
+    <input type="text" id="deckNameInput" placeholder="Напр. Испанский A1">
+    <label>Язык произношения</label>
+    <select id="deckLangInput">
+      <option value="en-GB">Английский (UK)</option>
+      <option value="en-US">Английский (US)</option>
+      <option value="es-ES">Испанский</option>
+      <option value="fr-FR">Французский</option>
+      <option value="de-DE">Немецкий</option>
+      <option value="it-IT">Итальянский</option>
+      <option value="pt-PT">Португальский</option>
+      <option value="ja-JP">Японский</option>
+      <option value="ko-KR">Корейский</option>
+      <option value="zh-CN">Китайский</option>
+      <option value="ru-RU">Русский</option>
+      <option value="tr-TR">Турецкий</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="deckModalCancel">Отмена</button>
+      <button class="btn btn-primary" id="deckModalSave">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: new card -->
+<div class="modal-overlay" id="cardModal" hidden>
+  <form class="modal" id="cardForm">
+    <h3>Новое слово</h3>
+    <label for="cardWordInput">Слово</label>
+    <input type="text" id="cardWordInput" placeholder="apple" maxlength="100" autocomplete="off" required>
+    <label for="cardTransInput">Перевод</label>
+    <input type="text" id="cardTransInput" placeholder="яблоко" maxlength="150" autocomplete="off" required>
+    <label for="cardExampleInput">Пример использования (не обязательно)</label>
+    <textarea id="cardExampleInput" placeholder="I ate an apple." maxlength="300" rows="3"></textarea>
+    <div class="form-error card-form-error" id="cardFormError" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cardModalCancel" type="button">Отмена</button>
+      <button class="btn btn-primary" id="cardModalSave" type="submit">Добавить</button>
+    </div>
+  </form>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
