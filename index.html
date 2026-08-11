@@ -19,17 +19,14 @@
     <h1 id="authTitle">Вход участника</h1>
     <p class="auth-subtitle" id="authSubtitle">Войди, чтобы продолжить обучение со своим прогрессом.</p>
     <form id="authForm">
-      <label for="participantName">Имя участника</label>
+      <div class="role-field" id="studentNameField" hidden>
+        <label for="studentDisplayName">Имя ученика</label>
+        <input id="studentDisplayName" type="text" minlength="2" maxlength="60" autocomplete="name">
+      </div>
+      <label for="participantName" id="participantLoginLabel">Логин</label>
       <input id="participantName" name="username" type="text" minlength="2" maxlength="40" autocomplete="username" required>
       <label for="participantPassword">Пароль</label>
-      <input id="participantPassword" name="password" type="password" minlength="4" maxlength="100" autocomplete="current-password" required>
-      <div class="role-field" id="roleField" hidden>
-        <label for="participantRole">Тип аккаунта</label>
-        <select id="participantRole">
-          <option value="student">Ученик</option>
-          <option value="teacher">Учитель</option>
-        </select>
-      </div>
+      <input id="participantPassword" name="password" type="password" minlength="6" maxlength="100" autocomplete="current-password" required>
       <label class="remember-login"><input id="rememberLogin" type="checkbox" checked><span>Запомнить меня на этом устройстве</span></label>
       <div class="form-error" id="authError" role="alert"></div>
       <button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Войти</button>
@@ -40,12 +37,9 @@
         <div class="guide-icon">A</div>
         <div><h2>Для ученика</h2><ol><li>Выбери тип аккаунта «Ученик».</li><li>Придумай имя и пароль.</li><li>Изучай Decks и выполняй Homework.</li><li>Учитель увидит твой прогресс и ошибки.</li></ol></div>
       </article>
-      <article class="guide-card guide-card--teacher">
-        <div class="guide-icon">T</div>
-        <div><h2>Для учителя</h2><ol><li>Выбери тип аккаунта «Учитель».</li><li>Создай отдельные имя и пароль.</li><li>Открывай результаты учеников.</li><li>Назначай оценки, посещаемость и задания.</li></ol></div>
-      </article>
+      <article class="guide-card guide-card--teacher"><div class="guide-icon">T</div><div><h2>Для учителя</h2><ol><li>Используй отдельный сайт учителя.</li><li>Войди под защищённой учётной записью.</li><li>Не регистрируй учителя через эту форму.</li><li>Ученические данные появятся автоматически.</li></ol></div></article>
     </div>
-    <p class="auth-note">Аккаунты и прогресс хранятся только в этом браузере.</p>
+    <p class="auth-note">Вход защищён Firebase Authentication. Пароль не хранится в базе сайта.</p>
   </div>
 </section>
 
@@ -402,6 +396,6 @@
   </form>
 </div>
 
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
