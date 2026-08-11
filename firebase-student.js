@@ -6,7 +6,7 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB4oy6LIIKRd52rjFpmBd8NfrYJLTrveg4",
+  apiKey: "AIzaSyB4oy6LIIKRd52rjFpmBd8NfrYJlTrveg4",
   authDomain: "vocabulary-trainer-622db.firebaseapp.com",
   projectId: "vocabulary-trainer-622db",
   storageBucket: "vocabulary-trainer-622db.firebasestorage.app",
