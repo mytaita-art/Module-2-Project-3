@@ -240,6 +240,32 @@ document.querySelectorAll(".nav-item").forEach(btn => {
 let activeUtterance = null;
 let speechTimer = null;
 let availableVoices = [];
+let voicesReadyPromise = null;
+let speechRequestId = 0;
+
+function waitForVoices() {
+  const loaded = window.speechSynthesis.getVoices();
+  if (loaded.length) {
+    availableVoices = loaded;
+    return Promise.resolve(loaded);
+  }
+  if (voicesReadyPromise) return voicesReadyPromise;
+
+  voicesReadyPromise = new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      availableVoices = window.speechSynthesis.getVoices();
+      resolve(availableVoices);
+    };
+    window.speechSynthesis.addEventListener("voiceschanged", finish, { once: true });
+    setTimeout(finish, 800);
+  }).finally(() => {
+    voicesReadyPromise = null;
+  });
+  return voicesReadyPromise;
+}
 
 function getPreferredVoice(lang = "en-GB") {
   const voices = availableVoices.length
@@ -290,16 +316,20 @@ function speak(text, lang) {
   const requestedLang = typeof lang === "string" && lang.trim() ? lang.trim() : "en-GB";
   const voiceLang = /^en(?:-|$)/i.test(requestedLang) ? "en-GB" : requestedLang;
   const rate = Number(DATA.settings?.speechRate);
+  const requestId = ++speechRequestId;
 
   clearTimeout(speechTimer);
   window.speechSynthesis.cancel();
 
   // Chrome can ignore an utterance started immediately after cancel().
-  speechTimer = setTimeout(() => {
+  speechTimer = setTimeout(async () => {
+    await waitForVoices();
+    if (requestId !== speechRequestId) return;
     const utter = new SpeechSynthesisUtterance(value);
     utter.lang = voiceLang;
     utter.rate = Number.isFinite(rate) ? Math.min(1.5, Math.max(0.5, rate)) : 0.9;
     utter.pitch = 1;
+    utter.volume = 1;
 
     const preferredVoice = getPreferredVoice(voiceLang);
     if (preferredVoice) utter.voice = preferredVoice;
@@ -311,6 +341,7 @@ function speak(text, lang) {
     };
     utter.onend = release;
     utter.onerror = release;
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(utter);
   }, 50);
 }
