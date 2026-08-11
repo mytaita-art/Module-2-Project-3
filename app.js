@@ -1,3 +1,5 @@
+import { registerStudent, loginStudent, logoutStudent, observeStudentAuth } from "./firebase-student.js";
+
 /* ===========================================================
    LEXICON — Vocabulary Trainer with Spaced Repetition (SM-2)
    =========================================================== */
@@ -925,14 +927,18 @@ function setAuthMode(mode) {
     ? "Уже есть аккаунт? Войти"
     : "Нет аккаунта? Зарегистрироваться";
   document.getElementById("participantPassword").autocomplete = registering ? "new-password" : "current-password";
-  document.getElementById("roleField").hidden = !registering;
+  document.getElementById("studentNameField").hidden = !registering;
+  document.getElementById("studentDisplayName").required = registering;
   document.getElementById("registrationGuide").hidden = !registering;
   authError.textContent = "";
 }
 
 function openParticipant(user, rememberSession = true) {
   currentUser = user;
-  if (rememberSession) {
+  if (user.firebase) {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } else if (rememberSession) {
     localStorage.setItem(SESSION_STORAGE_KEY, user.id);
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
   } else {
@@ -969,28 +975,40 @@ document.getElementById("authSwitch").addEventListener("click", () => {
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   authError.textContent = "";
-  const name = document.getElementById("participantName").value.trim();
+  const login = document.getElementById("participantName").value.trim();
+  const studentName = document.getElementById("studentDisplayName").value.trim();
   const password = document.getElementById("participantPassword").value;
   const rememberLogin = document.getElementById("rememberLogin").checked;
   const users = getUsers();
-  const existing = users.find(user => user.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+  const existingTeacher = users.find(user => user.role === "teacher"
+    && user.name.toLocaleLowerCase() === login.toLocaleLowerCase());
 
   try {
     if (authMode === "register") {
-      if (existing) throw new Error("Участник с таким именем уже зарегистрирован.");
-      const salt = randomSalt();
-      const role = document.getElementById("participantRole").value;
-      const user = { id: uid("user"), name, role, salt, passwordHash: await hashPassword(password, salt) };
-      users.push(user);
+      const profile = await registerStudent({ name: studentName, login, password, remember: rememberLogin });
+      const user = { id: profile.uid, name: profile.name, login: profile.login, role: "student", firebase: true,
+        hw1: profile.hw1, hw2: profile.hw2, hw3: profile.hw3, hw4: profile.hw4, hw5: profile.hw5 };
+      const oldIndex = users.findIndex(item => item.id === user.id);
+      if (oldIndex >= 0) users[oldIndex] = user; else users.push(user);
       saveUsers(users);
       openParticipant(user, rememberLogin);
     } else {
-      if (!existing || await hashPassword(password, existing.salt) !== existing.passwordHash) {
-        throw new Error("Неверное имя участника или пароль.");
+      if (existingTeacher) {
+        if (await hashPassword(password, existingTeacher.salt) !== existingTeacher.passwordHash) {
+          throw new Error("Неверный логин или пароль.");
+        }
+        openParticipant(existingTeacher, rememberLogin);
+      } else {
+        const profile = await loginStudent({ login, password, remember: rememberLogin });
+        const user = { id: profile.uid, name: profile.name, login: profile.login, role: "student", firebase: true,
+          hw1: profile.hw1, hw2: profile.hw2, hw3: profile.hw3, hw4: profile.hw4, hw5: profile.hw5 };
+        const oldIndex = users.findIndex(item => item.id === user.id);
+        if (oldIndex >= 0) users[oldIndex] = user; else users.push(user);
+        saveUsers(users);
+        openParticipant(user, rememberLogin);
       }
-      openParticipant(existing, rememberLogin);
     }
-    if (rememberLogin) localStorage.setItem(LAST_LOGIN_STORAGE_KEY, name);
+    if (rememberLogin) localStorage.setItem(LAST_LOGIN_STORAGE_KEY, login);
     else localStorage.removeItem(LAST_LOGIN_STORAGE_KEY);
     authForm.reset();
   } catch (error) {
@@ -998,8 +1016,9 @@ authForm.addEventListener("submit", async (event) => {
   }
 });
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
+document.getElementById("logoutBtn").addEventListener("click", async () => {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  if (currentUser?.firebase) await logoutStudent();
   localStorage.removeItem(SESSION_STORAGE_KEY);
   sessionStorage.removeItem(SESSION_STORAGE_KEY);
   currentUser = null;
@@ -1295,9 +1314,20 @@ document.getElementById("teacherScreen").addEventListener("click", event => {
 
 const persistentSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
 const savedSessionId = persistentSessionId || sessionStorage.getItem(SESSION_STORAGE_KEY);
-const sessionUser = getUsers().find(user => user.id === savedSessionId);
+const sessionUser = getUsers().find(user => user.id === savedSessionId && user.role === "teacher");
 if (sessionUser) openParticipant(sessionUser, Boolean(persistentSessionId));
 else {
-  setAuthMode(getUsers().length ? "login" : "register");
+  setAuthMode("login");
   document.getElementById("participantName").value = localStorage.getItem(LAST_LOGIN_STORAGE_KEY) || "";
+  observeStudentAuth((profile, error) => {
+    if (error) authError.textContent = error.message;
+    if (!profile || currentUser?.role === "teacher") return;
+    const user = { id: profile.uid, name: profile.name, login: profile.login, role: "student", firebase: true,
+      hw1: profile.hw1, hw2: profile.hw2, hw3: profile.hw3, hw4: profile.hw4, hw5: profile.hw5 };
+    const users = getUsers();
+    const oldIndex = users.findIndex(item => item.id === user.id);
+    if (oldIndex >= 0) users[oldIndex] = user; else users.push(user);
+    saveUsers(users);
+    openParticipant(user);
+  });
 }
